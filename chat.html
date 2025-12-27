@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scrollable=no">
+    <title>Anonim Chat</title>
+    <style>
+        :root { --bg: #0b141a; --surface: #1f2c34; --primary: #00a884; --my-chat: #005c4b; --text: #e9edef; --danger: #ef5350; }
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; outline: none; }
+        body { margin: 0; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        .screen { display: none; flex-direction: column; height: 100%; width: 100%; animation: fade 0.2s; }
+        .active { display: flex; }
+        @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+        .auth-container { flex: 1; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .form-box { width: 100%; max-width: 350px; background: var(--surface); padding: 30px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        h2 { text-align: center; color: var(--text); margin-top: 0; font-weight: 500; letter-spacing: 1px; }
+        input { width: 100%; padding: 12px; margin: 8px 0; background: #111b21; border: 1px solid #2a3942; color: white; border-radius: 5px; font-size: 14px; }
+        button.btn-main { width: 100%; padding: 12px; background: var(--primary); color: #111b21; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 15px; font-size: 14px; text-transform: uppercase; }
+        .toggle-link { text-align: center; margin-top: 20px; font-size: 12px; color: #8696a0; cursor: pointer; }
+        .room-menu { padding: 20px; overflow-y: auto; align-items: center; }
+        .room-header-title { width: 100%; max-width: 400px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .room-btn { background: var(--surface); padding: 15px; width: 100%; max-width: 400px; margin-bottom: 10px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 15px; border: 1px solid transparent; transition: 0.2s; }
+        .room-btn:active { background: #2a3942; }
+        .room-icon { font-size: 20px; background: #111b21; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--primary); }
+        .online-badge { font-size: 12px; color: #00e676; background: rgba(0,230,118,0.1); padding: 4px 10px; border-radius: 15px; border: 1px solid rgba(0,230,118,0.2); display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+        .online-dot { width: 8px; height: 8px; background: #00e676; border-radius: 50%; box-shadow: 0 0 5px #00e676; }
+        .history-section { width: 100%; max-width: 400px; margin-top: 20px; border-top: 1px solid #2a3942; padding-top: 15px; }
+        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #111b21; margin-bottom: 8px; border-radius: 8px; font-size: 13px; }
+        .join-mini { background: var(--my-chat); color: white; padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-size: 12px; }
+        #chat-header { padding: 10px 15px; background: var(--surface); display: flex; justify-content: space-between; align-items: center; z-index: 10; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        #chat-list { flex: 1; overflow-y: auto; padding: 15px 10px; display: flex; flex-direction: column; gap: 6px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-blend-mode: overlay; background-color: #0b141a; }
+        .msg-row { display: flex; flex-direction: column; width: 100%; margin-bottom: 4px; }
+        .msg-left { align-items: flex-start; }
+        .msg-right { align-items: flex-end; }
+        .bubble { position: relative; padding: 6px 10px 8px 10px; border-radius: 10px; font-size: 14.5px; line-height: 1.3; max-width: 80%; width: fit-content; box-shadow: 0 1px 0.5px rgba(0,0,0,0.13); word-wrap: break-word; }
+        .msg-left .bubble { background: var(--surface); border-top-left-radius: 0; }
+        .msg-right .bubble { background: var(--my-chat); border-top-right-radius: 0; }
+        .meta-name { font-size: 11px; font-weight: bold; color: #e53935; margin-bottom: 3px; }
+        .msg-right .meta-name { display: none; }
+        .time-tick { float: right; margin-left: 10px; margin-top: 6px; font-size: 10px; color: #8696a0; display: flex; align-items: center; }
+        .admin-actions { display: flex; gap: 15px; margin-top: 2px; font-size: 11px; opacity: 0.7; padding: 2px 5px; }
+        .admin-btn { cursor: pointer; color: #8696a0; transition: 0.2s; }
+        .admin-btn:hover { color: #ef5350; text-decoration: underline; }
+        .reply-preview { border-left: 4px solid var(--primary); background: rgba(0,0,0,0.2); padding: 5px 8px; border-radius: 4px; font-size: 12px; margin-bottom: 5px; color: #cfcfcf; display: flex; flex-direction: column; }
+        #input-area { background: var(--surface); padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; }
+        .input-bar { display: flex; align-items: flex-end; gap: 8px; }
+        textarea { background: #2a3942; border: none; padding: 10px 14px; border-radius: 20px; resize: none; min-height: 45px; max-height: 100px; font-size: 15px; color: white; width: 100%; }
+        #send-btn { background: var(--primary); width: 45px; height: 45px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
+        #send-btn:active { transform: scale(0.9); }
+        .admin-badge { background: #ffb300; color: black; padding: 1px 4px; border-radius: 3px; font-size: 9px; margin-right: 4px; font-weight: bold; vertical-align: middle; }
+    </style>
+</head>
+<body>
+    <div id="screen-auth" class="screen active">
+        <div class="auth-container">
+            <div class="form-box">
+                <h2 id="auth-title">ANONIM CHAT</h2>
+                
+                <!-- REGISTRATION FIELDS -->
+                <div id="reg-area" style="display:none;">
+                    <input type="text" id="reg-name" placeholder="Nama Tampilan">
+                    <input type="email" id="reg-email" placeholder="Email (gak perlu valid)">
+                    <input type="password" id="reg-pass" placeholder="Kata Sandi">
+                </div>
+                
+                <!-- LOGIN FIELDS -->
+                <div id="login-area">
+                    <input type="email" id="auth-email" placeholder="Email">
+                    <input type="password" id="auth-pass" placeholder="Kata Sandi">
+                </div>
+                
+                <button class="btn-main" onclick="handleAuth()">MASUK</button>
+                <div class="toggle-link" onclick="toggleMode()">Belum punya akun? Daftar di sini</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-rooms" class="screen room-menu">
+        <div class="room-header-title">
+            <h3 style="color:#8696a0; font-weight:normal; margin:0;">Pilih Ruang</h3>
+            <div class="online-badge" id="badge-menu">
+                <div class="online-dot"></div> <span id="online-count-menu">0</span>&nbsp;Online
+            </div>
+        </div>
+
+        <div class="room-btn" onclick="joinRoom('global')">
+            <div class="room-icon">🌍</div>
+            <div>
+                <div style="font-weight:bold;">Ruangan Publik</div>
+                <div style="font-size:12px; color:#8696a0;">Obrolan server global</div>
+            </div>
+        </div>
+
+        <div class="room-btn" onclick="showScreen('screen-room-action')">
+            <div class="room-icon">💬</div>
+            <div>
+                <div style="font-weight:bold;">Ruangan</div>
+                <div style="font-size:12px; color:#8696a0;">Buat atau cari ruang privat</div>
+            </div>
+        </div>
+
+        <div id="history-list" class="history-section" style="display:none;"></div>
+        <button onclick="logout()" style="margin-top:30px; background:transparent; border:1px solid #ef5350; color:#ef5350; padding:10px 20px; border-radius:20px; cursor:pointer; font-size:12px;">KELUAR AKUN</button>
+    </div>
+
+    <div id="screen-room-action" class="screen room-menu">
+        <div class="room-header-title">
+            <h3 style="color:#8696a0; font-weight:normal; margin:0;">Ruangan</h3>
+            <button onclick="showScreen('screen-rooms')" style="background:none; border:none; color:white; font-size:22px; cursor:pointer;">←</button>
+        </div>
+        <div class="room-btn" onclick="showScreen('screen-create-room')">
+            <div class="room-icon">➕</div>
+            <div>
+                <div style="font-weight:bold;">Buat Ruang Baru</div>
+                <div style="font-size:12px; color:#8696a0;">Atur nama & password</div>
+            </div>
+        </div>
+        <div class="room-btn" onclick="loadRoomList(); showScreen('screen-search-room')">
+            <div class="room-icon">🔍</div>
+            <div>
+                <div style="font-weight:bold;">Cari Ruang</div>
+                <div style="font-size:12px; color:#8696a0;">Lihat semua ruang privat</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-create-room" class="screen room-menu">
+        <div class="room-header-title">
+            <h3 style="color:#8696a0; font-weight:normal; margin:0;">Buat Ruang</h3>
+            <button onclick="showScreen('screen-room-action')" style="background:none; border:none; color:white; font-size:22px; cursor:pointer;">←</button>
+        </div>
+        <input id="create-room-name" placeholder="Nama Ruang">
+        <input id="create-room-pass" placeholder="Password Ruang">
+        <button class="btn-main" onclick="createRoom()">BUAT</button>
+    </div>
+
+    <div id="screen-search-room" class="screen room-menu">
+        <div class="room-header-title">
+            <h3 style="color:#8696a0; font-weight:normal; margin:0;">Cari Ruang</h3>
+            <button onclick="showScreen('screen-room-action')" style="background:none; border:none; color:white; font-size:22px; cursor:pointer;">←</button>
+        </div>
+        <div id="room-list" style="width:100%; max-width:400px;"></div>
+    </div>
+
+    <div id="screen-chat" class="screen">
+        <div id="chat-header">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <button onclick="leaveRoom()" style="background:none; border:none; color:white; font-size:22px; cursor:pointer; padding:0;">←</button>
+                <div style="display:flex; flex-direction:column;">
+                    <div id="room-name" style="font-weight:bold; font-size:15px;">Ruang</div>
+                    <div id="room-id-display" style="font-size:11px; color:#8696a0; cursor:pointer;" onclick="copyId()">Salin ID Ruang</div>
+                </div>
+            </div>
+            <div class="online-badge" style="padding:2px 8px; font-size:11px;">
+                <div class="online-dot"></div> <span id="online-count-chat">0</span>&nbsp;Online
+            </div>
+        </div>
+
+        <div id="chat-list"></div>
+
+        <div id="input-area">
+            <div id="reply-bar" style="display:none; background:#1f2c34; padding:8px; border-radius:5px; margin-bottom:5px; font-size:12px; border-left:4px solid var(--primary); color:#cfcfcf; justify-content:space-between; align-items:center;">
+                <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:85%;">
+                    <div style="color:var(--primary); font-weight:bold; margin-bottom:2px;" id="reply-to-name">Nama</div>
+                    <div id="reply-to-text" style="opacity:0.8;">teks...</div>
+                </div>
+                <span onclick="cancelReply()" style="padding:5px 10px; cursor:pointer; font-weight:bold; font-size:16px;">✕</span>
+            </div>
+            <div class="input-bar">
+                <textarea id="msg-input" placeholder="Ketik pesan..."></textarea>
+                <button id="send-btn" onclick="sendMessage()"><img src="https://i.ibb.co.com/KxkK8Wyy/send-500dp-E3-E3-E3-FILL0-wght400-GRAD0-opsz48.png" width="24" height="24" alt="Kirim" onerror="this.style.display='none'; this.parentNode.innerText='➤'"></button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getDatabase, ref, get, set, push, update, remove, onChildAdded, onChildChanged, onChildRemoved, onValue, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDkhr-3thW9-za-lJpQb9qxwARDf_DL_jw",
+            authDomain: "anonim-chat-12d0d.firebaseapp.com",
+            databaseURL: "https://anonim-chat-12d0d-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "anonim-chat-12d0d",
+            storageBucket: "anonim-chat-12d0d.firebasestorage.app",
+            messagingSenderId: "633554311278",
+            appId: "1:633554311278:web:9648cdd7cf4573d1282e7f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let currentUser = JSON.parse(localStorage.getItem('chatUser')) || null;
+        let currentRoom = null;
+        let replyData = null;
+        let isReg = false;
+
+        // JANGAN LUPA: fungsi ini dipanggil dari HTML onclick jadi harus global
+        window.showScreen = function(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        };
+
+        if (currentUser) {
+            updatePresence('LOBBY');
+            setupPresenceListener();
+            window.showScreen('screen-rooms');
+            loadHistory();
+        }
+
+        function updatePresence(roomLocation) {
+            if (!currentUser) return;
+            const myConRef = ref(db, `online_users/${currentUser.id}`);
+            set(myConRef, {
+                status: true,
+                room: roomLocation,
+                last_seen: serverTimestamp()
+            });
+            onDisconnect(myConRef).remove();
+        }
+
+        function setupPresenceListener() {
+            onValue(ref(db, 'online_users'), (snapshot) => {
+                if (!snapshot.exists()) { setCount(0, 0); return; }
+                const users = snapshot.val();
+                const total = Object.keys(users).length;
+                let roomCount = 0;
+                if (currentRoom) {
+                    for (let key in users) {
+                        if (users[key].room === currentRoom) roomCount++;
+                    }
+                }
+                setCount(total, roomCount);
+            });
+        }
+
+        function setCount(total, room) {
+            document.getElementById('online-count-menu').innerText = total;
+            document.getElementById('online-count-chat').innerText = room;
+        }
+
+        window.toggleMode = () => {
+            isReg = !isReg;
+            document.getElementById('reg-area').style.display = isReg ? 'block' : 'none';
+            document.getElementById('login-area').style.display = isReg ? 'none' : 'block';
+            document.getElementById('auth-title').innerText = isReg ? 'PENDAFTARAN' : 'ANONIM CHAT';
+            document.querySelector('.btn-main').innerText = isReg ? 'DAFTAR AKUN' : 'MASUK';
+            document.querySelector('.toggle-link').innerText = isReg ? 'Sudah punya akun? Masuk di sini' : 'Belum punya akun? Daftar di sini';
+        };
+
+        // Encode email jadi base64 biar aman buat firebase path
+        function encodeEmail(email) {
+            return btoa(email).replace(/[+/=]/g, '_');
+        }
+        function decodeEmail(encoded) {
+            return atob(encoded.replace(/_/g, '+'));
+        }
+
+        window.handleAuth = async () => {
+            const email = isReg ? document.getElementById('reg-email').value.trim() : document.getElementById('auth-email').value.trim();
+            const pass = isReg ? document.getElementById('reg-pass').value.trim() : document.getElementById('auth-pass').value.trim();
+            const name = isReg ? document.getElementById('reg-name').value.trim() : '';
+
+            if (!email || !pass) return alert("Email & Password wajib diisi.");
+
+            const encodedEmail = encodeEmail(email);
+            const userRef = ref(db, 'users/' + encodedEmail);
+            const snap = await get(userRef);
+
+            if (isReg) {
+                if (!name) return alert("Nama Tampilan wajib diisi.");
+                if (snap.exists()) return alert("Email sudah terdaftar.");
+                await set(userRef, { name, email, pass, isAdmin: false, createdAt: Date.now() });
+                loginSuccess({ id: encodedEmail, email: email, name, isAdmin: false });
+            } else {
+                if (!snap.exists()) return alert("Email tidak terdaftar.");
+                const data = snap.val();
+                if (data.pass !== pass) return alert("Password salah.");
+                loginSuccess({ id: encodedEmail, email: email, name: data.name, isAdmin: data.isAdmin || false });
+            }
+        };
+
+        function loginSuccess(user) {
+            currentUser = user;
+            localStorage.setItem('chatUser', JSON.stringify(user));
+            updatePresence('LOBBY');
+            setupPresenceListener();
+            window.showScreen('screen-rooms');
+            loadHistory();
+        }
+
+        window.logout = () => {
+            if (currentUser) remove(ref(db, `online_users/${currentUser.id}`));
+            localStorage.removeItem('chatUser');
+            location.reload();
+        };
+
+        window.createRoom = async () => {
+            const name = document.getElementById('create-room-name').value.trim();
+            const pass = document.getElementById('create-room-pass').value.trim();
+            if (!name || !pass) return alert("Nama & Password ruang wajib diisi.");
+            const roomId = 'R-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+            await set(ref(db, 'rooms/' + roomId), { name, pass, owner: currentUser.id, ownerName: currentUser.name });
+            alert("Ruang berhasil dibuat! ID: " + roomId);
+            joinRoom(roomId);
+        };
+
+        window.loadRoomList = async () => {
+            const snap = await get(ref(db, 'rooms'));
+            const list = document.getElementById('room-list');
+            list.innerHTML = '';
+            if (!snap.exists()) return list.innerHTML = '<div style="color:#8696a0;">Belum ada ruang privat.</div>';
+            const rooms = snap.val();
+            for (let rid in rooms) {
+                const r = rooms[rid];
+                list.innerHTML += `
+                    <div class="room-btn" onclick="promptJoinRoom('${rid}', '${r.name}', '${r.pass}')">
+                        <div class="room-icon">🔒</div>
+                        <div>
+                            <div style="font-weight:bold;">${r.name}</div>
+                            <div style="font-size:12px; color:#8696a0;">by ${r.ownerName}</div>
+                        </div>
+                    </div>
+                `;
+            }
+        };
+
+        window.promptJoinRoom = (roomId, roomName, roomPass) => {
+            const input = prompt(`Masukkan password untuk ruang "${roomName}":`);
+            if (input === roomPass) joinRoom(roomId);
+            else if (input) alert("Password salah!");
+        };
+
+        window.joinRoom = (roomId) => {
+            if (!roomId) return;
+            currentRoom = roomId;
+            updatePresence(roomId);
+            let history = JSON.parse(localStorage.getItem('roomHistory')) || [];
+            history = history.filter(id => id !== roomId);
+            history.unshift(roomId);
+            localStorage.setItem('roomHistory', JSON.stringify(history.slice(0, 5)));
+            document.getElementById('room-name').innerText = roomId === 'global' ? 'Ruangan Publik' : 'Ruangan Privat';
+            document.getElementById('room-id-display').innerText = roomId;
+            window.showScreen('screen-chat');
+            loadMessages();
+        };
+
+        window.leaveRoom = () => {
+            currentRoom = null;
+            updatePresence('LOBBY');
+            document.getElementById('chat-list').innerHTML = '';
+            window.showScreen('screen-rooms');
+            loadHistory();
+            const old = document.getElementById('chat-list');
+            old.parentNode.replaceChild(old.cloneNode(true), old);
+        };
+
+        function loadHistory() {
+            const list = document.getElementById('history-list');
+            const history = JSON.parse(localStorage.getItem('roomHistory')) || [];
+            if (history.length > 0) {
+                list.style.display = 'block';
+                list.innerHTML = '<div style="color:#8696a0; font-size:11px; margin-bottom:10px; font-weight:bold; letter-spacing:0.5px;">RIWAYAT RUANG TERAKHIR:</div>';
+                history.forEach(rid => {
+                    const label = rid === 'global' ? 'Ruangan Publik' : rid;
+                    list.innerHTML += `<div class="history-item"><span style="font-weight:bold; color:#d1d7db;">${label}</span><button class="join-mini" onclick="joinRoom('${rid}')">MASUK</button></div>`;
+                });
+            }
+        }
+
+        window.copyId = () => { navigator.clipboard.writeText(currentRoom); alert("ID Ruang berhasil disalin."); };
+
+        function loadMessages() {
+            const chatList = document.getElementById('chat-list');
+            chatList.innerHTML = '';
+            const msgsRef = ref(db, `rooms/${currentRoom}/messages`);
+            onChildAdded(msgsRef, (snap) => { renderMsg(snap.key, snap.val()); setTimeout(() => chatList.scrollTop = chatList.scrollHeight, 50); });
+            onChildRemoved(msgsRef, (snap) => { const el = document.getElementById(`msg-${snap.key}`); if (el) el.remove(); });
+            onChildChanged(msgsRef, (snap) => { const data = snap.val(); const el = document.querySelector(`#msg-${snap.key} .bubble-text`); if (el) el.innerHTML = formatText(data.text); });
+        }
+
+        function renderMsg(key, data) {
+            const isMe = data.senderId === currentUser.id;
+            const div = document.createElement('div');
+            div.id = `msg-${key}`;
+            div.className = `msg-row ${isMe ? 'msg-right' : 'msg-left'}`;
+            div.ondblclick = () => setReply(data);
+            const adminBadge = data.isAdmin ? '<span class="admin-badge">ADMIN</span>' : '';
+            const senderName = isMe ? '' : `<div class="meta-name">${adminBadge}${escapeHtml(data.senderName)}</div>`;
+            let replyBlock = data.replyTo ? `<div class="reply-preview"><span style="font-weight:bold; color:var(--primary);">${escapeHtml(data.replyTo.name)}</span><span>${escapeHtml(data.replyTo.text).substring(0, 50)}...</span></div>` : '';
+            let adminTools = currentUser.isAdmin ? `<div class="admin-actions" style="${isMe ? 'justify-content:flex-end' : 'justify-content:flex-start'}"><span class="admin-btn" onclick="editMsg('${key}', '${escapeHtml(data.text)}')">Edit</span><span class="admin-btn" onclick="delMsg('${key}')">Hapus</span></div>` : '';
+            const d = new Date(data.timestamp);
+            const time = d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+            div.innerHTML = `<div class="bubble">${senderName}${replyBlock}<span class="bubble-text">${formatText(data.text)}</span><div class="time-tick">${time}</div></div>${adminTools}`;
+            document.getElementById('chat-list').appendChild(div);
+        }
+
+        window.sendMessage = () => {
+            const input = document.getElementById('msg-input');
+            const text = input.value.trim();
+            if (!text) return;
+            const payload = { senderId: currentUser.id, senderName: currentUser.name, text: text, timestamp: serverTimestamp(), isAdmin: currentUser.isAdmin };
+            if (replyData) payload.replyTo = replyData;
+            push(ref(db, `rooms/${currentRoom}/messages`), payload);
+            input.value = ''; cancelReply();
+        };
+
+        window.setReply = (data) => { replyData = { name: data.senderName, text: data.text }; document.getElementById('reply-bar').style.display = 'flex'; document.getElementById('reply-to-name').innerText = data.senderName; document.getElementById('reply-to-text').innerText = data.text; document.getElementById('msg-input').focus(); };
+        window.cancelReply = () => { replyData = null; document.getElementById('reply-bar').style.display = 'none'; };
+        window.delMsg = (key) => { if (confirm("Hapus pesan ini?")) remove(ref(db, `rooms/${currentRoom}/messages/${key}`)); };
+        window.editMsg = (key, old) => { const newT = prompt("Ubah pesan:", old); if (newT && newT !== old) update(ref(db, `rooms/${currentRoom}/messages/${key}`), { text: newT }); };
+        function formatText(t) { return escapeHtml(t).replace(/\n/g, '<br>').replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color:#53bdeb; text-decoration:none;">$1</a>'); }
+        function escapeHtml(t) { return t ? t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : ""; }
+    </script>
+</body>
+</html>
